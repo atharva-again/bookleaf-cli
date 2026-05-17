@@ -88,9 +88,14 @@ release:
   header: |
     ## BookLeaf CLI v{{ .Version }}
 
-    Install:
+    ### macOS / Linux
     ```sh
-    curl -fsSL https://bookleaf-assignment-atharva.vercel.app/cli/install.sh | sh
+    curl -fsSL https://bookleaf-assignment-atharva.vercel.app/cli/install.sh | bash
+    ```
+
+    ### Windows
+    ```powershell
+    irm https://bookleaf-assignment-atharva.vercel.app/cli/install.ps1 | iex
     ```
 
     Checksums signed with cosign (keyless). Verify:
