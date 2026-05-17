@@ -90,7 +90,7 @@ release:
 
     Install:
     ```sh
-    curl -fsSL https://raw.githubusercontent.com/atharva-again/bookleaf-cli/main/install.sh | sh -s -- v{{ .Version }}
+    curl -fsSL https://bookleaf-assignment-atharva.vercel.app/cli/install.sh | sh
     ```
 
     Checksums signed with cosign (keyless). Verify:
