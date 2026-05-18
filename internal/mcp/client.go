@@ -192,11 +192,22 @@ type DeviceCodeResponse struct {
 }
 
 func (d *DeviceAuthClient) RequestDeviceCode() (*DeviceCodeResponse, error) {
-	resp, err := d.httpClient.Post(d.baseURL+"/api/auth/device", "application/json", nil)
+	body := map[string]string{"client_id": "bookleaf-cli"}
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshal device code request: %w", err)
+	}
+
+	resp, err := d.httpClient.Post(d.baseURL+"/api/auth/device", "application/json", bytes.NewReader(bodyJSON))
 	if err != nil {
 		return nil, fmt.Errorf("request device code: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("device code request failed (%d): %s", resp.StatusCode, string(respBody))
+	}
 
 	var result DeviceCodeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -213,11 +224,21 @@ type tokenResponse struct {
 	Scope       string `json:"scope"`
 }
 
+type pollErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"error_description"`
+}
+
 func (d *DeviceAuthClient) PollForToken(deviceCode string, interval int) (*tokenResponse, error) {
 	body := map[string]string{"device_code": deviceCode}
 	bodyJSON, _ := json.Marshal(body)
 
-	for {
+	if interval < 1 {
+		interval = 5
+	}
+	maxAttempts := 600 / interval // poll for up to 10 minutes (matches expires_in)
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		resp, err := d.httpClient.Post(d.baseURL+"/api/auth/device/poll", "application/json", bytes.NewReader(bodyJSON))
 		if err != nil {
 			return nil, fmt.Errorf("poll: %w", err)
@@ -233,9 +254,21 @@ func (d *DeviceAuthClient) PollForToken(deviceCode string, interval int) (*token
 			return &token, nil
 		}
 
+		var pollErr pollErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&pollErr); err == nil {
+			resp.Body.Close()
+			if pollErr.Error == "authorization_pending" {
+				time.Sleep(time.Duration(interval) * time.Second)
+				continue
+			}
+			return nil, fmt.Errorf("poll failed: %s", pollErr.Message)
+		}
 		resp.Body.Close()
+
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
+
+	return nil, fmt.Errorf("poll expired: authorization timed out after 10 minutes")
 }
 
 // TokenPayload represents the decoded access token payload.

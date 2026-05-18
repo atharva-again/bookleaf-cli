@@ -45,7 +45,11 @@ a token once you authorize.`,
 		bufio.NewReader(os.Stdin).ReadString('\n')
 
 		copyToClipboard(deviceResp.UserCode)
-		openBrowser(deviceResp.VerificationURI)
+		if err := openBrowser(deviceResp.VerificationURI); err != nil {
+			fmt.Println()
+			fmt.Printf("  Could not open browser automatically: %v\n", err)
+			fmt.Printf("  Open this link manually: \033[34m%s\033[0m\n", deviceResp.VerificationURI)
+		}
 
 		fmt.Println()
 
