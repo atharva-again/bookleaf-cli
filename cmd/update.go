@@ -43,7 +43,7 @@ Examples:
 		targetVersion := ""
 
 		if len(args) == 0 || args[0] == "latest" || args[0] == "canary" {
-			if args[0] == "canary" {
+			if len(args) > 0 && args[0] == "canary" {
 				fmt.Println("Note: canary builds are not configured. Falling back to latest release.")
 			}
 			ver, err := fetchLatestVersion()
